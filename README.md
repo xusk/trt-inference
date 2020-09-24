@@ -1,2 +1,2 @@
 # trt-inference
-tensorrt inference c++/ python api
+tensorrt inference c++、 python api
