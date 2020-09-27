@@ -95,7 +95,6 @@ endif()
 include_directories(spdlog)
 include_directories(pybind11/include)
 include_directories(./)
-include_directories(./plugin)
 include_directories(./concurrentqueue)
 
 
@@ -119,31 +118,13 @@ ENABLE_PRELU_FP16 : ${ENABLE_PRELU_FP16}
 
 
 file(GLOB_RECURSE trt_source
-        ZyTrt.cpp
-       TrtBuffer.cpp
- #    Trt.cpp
- #    Int8EntropyCalibrator.cpp
-#[[     plugin/*.cu
-     plugin/*.cpp]]
-     )
+  ZyTrt.cpp
+  TrtBuffer.cpp
+)
 cuda_add_library(zytrt SHARED ${trt_source} )
 target_compile_options(zytrt PUBLIC -std=c++11 -Wall)
 #target_compile_options(tinytrt PUBLIC -std=c++11 -Wall -Wfloat-conversion)
 set_target_properties(zytrt PROPERTIES POSITION_INDEPENDENT_CODE ON)
-
-#if(BUILD_PYTHON)
-#  # set(Python3_ROOT_DIR /root/miniconda3/bin)
-#  # find_package(Python3 REQUIRED)
-#  include_directories(${PYTHON_INCLUDE_DIRS})
-#  add_subdirectory(pybind11)
-#  pybind11_add_module(pytrt SHARED PyTrt.cpp)
-#  target_link_libraries(pytrt PRIVATE tinytrt)
-#  target_link_libraries(pytrt PRIVATE nvinfer)
-#  target_link_libraries(pytrt PRIVATE nvinfer_plugin)
-#  target_link_libraries(pytrt PRIVATE nvparsers)
-#  target_link_libraries(pytrt PRIVATE nvonnxparser)
-#  target_link_libraries(pytrt PRIVATE nvcaffe_parser)
-#endif()
 
 
 
@@ -161,21 +142,3 @@ if(BUILD_PYTHON)
   target_link_libraries(pytrt PRIVATE nvcaffe_parser)
 endif()
 
-
-
-## custom test
-if(BUILD_TEST)
-  file(GLOB test_source
-      test/test.cpp
-      )
-  add_executable(unit_test ${test_source} main.cpp)
-  target_compile_options(unit_test PUBLIC -std=c++11 -Wall -Wfloat-conversion)
-  #target_compile_options(unit_test PUBLIC -std=c++11 -Wall)
-  target_link_libraries(unit_test tinytrt)
-  target_link_libraries(unit_test nvinfer)
-  target_link_libraries(unit_test nvinfer_plugin)
-  target_link_libraries(unit_test nvparsers)
-  target_link_libraries(unit_test nvonnxparser)
-  target_link_libraries(unit_test nvcaffe_parser)
-  target_link_libraries(unit_test ${CUDART})
-endif()
