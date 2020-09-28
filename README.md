@@ -16,18 +16,16 @@
 
 
 # 编译
-'''
+``` shell
 mkdir build
-
 cmake .. 
-
 make
+```
 
-'''
 
 
 # 使用
-'''
+```python
 import pytrt
 
 # create trt engine
@@ -41,5 +39,4 @@ trt.DoInference(input)
 
 # DynamicInference
 trt.DoDynamicInferenceAsync(input)
-
-'''
+```
