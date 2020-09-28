@@ -13,3 +13,33 @@
 ## 环境
 - cuda 10.2 cudnn 8.0.3.33 tensorrt 7.1.3
 - tensorrt 7.0.11 有显存泄露的风险
+
+
+# 编译
+'''
+mkdir build
+
+cmake .. 
+
+make
+
+'''
+
+
+# 使用
+'''
+import pytrt
+
+# create trt engine
+trt = pytrt.ZyTrt(num_worker, engineFile);
+
+# create dynamic trt engine 
+trt = pytrt.ZyTrt(num_worker, engineFile, profileIndex, inputDims);
+
+# DoInference
+trt.DoInference(input) 
+
+# DynamicInference
+trt.DoDynamicInferenceAsync(input)
+
+'''
