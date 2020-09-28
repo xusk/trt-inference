@@ -8,7 +8,7 @@
 - 封装 c++ api，方便 python调用 
 - 优化数据传输，数据复制到锁页内存
 
-base on tinytrt
+base on [tinytrt](https://github.com/zerollzeng/tiny-tensorrt)
 
 
 ## 环境
@@ -24,16 +24,15 @@ make
 ```
 
 
-
 ## 使用
 ```python
 import pytrt
 
 # create trt engine
-trt = pytrt.ZyTrt(num_worker, engineFile);
+trt = pytrt.ZyTrt(engineFile);
 
 # create dynamic trt engine 
-trt = pytrt.ZyTrt(num_worker, engineFile, profileIndex, inputDims);
+trt = pytrt.ZyTrt(engineFile, profileIndex, inputDims);
 
 # DoInference
 trt.DoInference(input) 
