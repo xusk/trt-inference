@@ -8,6 +8,7 @@
 - 封装 c++ api，方便 python调用 
 - 优化数据传输，数据复制到锁页内存
 
+base on tinytrt
 
 
 ## 环境
@@ -15,7 +16,7 @@
 - tensorrt 7.0.11 有显存泄露的风险
 
 
-# 编译
+## 编译
 ``` shell
 mkdir build
 cmake .. 
@@ -24,7 +25,7 @@ make
 
 
 
-# 使用
+## 使用
 ```python
 import pytrt
 
