@@ -6,11 +6,11 @@
 #include <numeric>
 #include "cuda_runtime.h"
 #include <NvInfer.h>
+#include "macros.h"
 
 
 class TrtLogger : public nvinfer1::ILogger {
-    void log(Severity severity, const char* msg) override
-    {
+    void log(Severity severity, const char *msg) TRT_NOEXCEPT override {
         // suppress info-level messages
         if (severity != Severity::kVERBOSE)
             std::cout << msg << std::endl;
@@ -21,20 +21,24 @@ class TrtLogger : public nvinfer1::ILogger {
 #define UNUSED(unusedVariable) (void)(unusedVariable)
 // suppress compiler warning: unused parameter
 
-inline int64_t volume(const nvinfer1::Dims& d)
-{
+inline int64_t volume(const nvinfer1::Dims &d) {
     return std::accumulate(d.d, d.d + d.nbDims, 1, std::multiplies<int64_t>());
 }
 
-inline unsigned int getElementSize(nvinfer1::DataType t)
-{
-    switch (t)
-    {
-        case nvinfer1::DataType::kINT32: return 4;
-        case nvinfer1::DataType::kFLOAT: return 4;
-        case nvinfer1::DataType::kHALF: return 2;
-        case nvinfer1::DataType::kINT8: return 1;
-        default: throw std::runtime_error("Invalid DataType.");
+inline unsigned int getElementSize(nvinfer1::DataType t) {
+    switch (t) {
+        case nvinfer1::DataType::kINT32:
+            return 4;
+        case nvinfer1::DataType::kFLOAT:
+            return 4;
+        case nvinfer1::DataType::kHALF:
+            return 2;
+        case nvinfer1::DataType::kINT8:
+            return 1;
+        case nvinfer1::DataType::kBOOL:
+            return 1;
+        default:
+            throw std::runtime_error("Invalid DataType.");
     }
 }
 
@@ -50,8 +54,8 @@ inline unsigned int getElementSize(nvinfer1::DataType t)
     }
 #endif
 
-inline void* safeCudaMalloc(size_t memSize) {
-    void* deviceMem;
+inline void *safeCudaMalloc(size_t memSize) {
+    void *deviceMem;
     CUDA_CHECK(cudaMalloc(&deviceMem, memSize));
     if (deviceMem == nullptr) {
         std::cerr << "Out of memory" << std::endl;
@@ -60,13 +64,14 @@ inline void* safeCudaMalloc(size_t memSize) {
     return deviceMem;
 }
 
-inline void safeCudaFree(void* deviceMem) {
+inline void safeCudaFree(void *deviceMem) {
     CUDA_CHECK(cudaFree(deviceMem));
 }
 
-inline void error(const std::string& message, const int line, const std::string& function, const std::string& file) {
+inline void error(const std::string &message, const int line, const std::string &function, const std::string &file) {
     std::cout << message << " at " << line << " in " << function << " in " << file << std::endl;
 }
+
 #define COMPILE_TEMPLATE_BASIC_TYPES_CLASS(className) COMPILE_TEMPLATE_BASIC_TYPES(className, class)
 #define COMPILE_TEMPLATE_BASIC_TYPES_STRUCT(className) COMPILE_TEMPLATE_BASIC_TYPES(className, struct)
 #define COMPILE_TEMPLATE_BASIC_TYPES(className, classType) \
@@ -95,7 +100,7 @@ inline void error(const std::string& message, const int line, const std::string&
 struct YoloKernel;
 
 static constexpr int LOCATIONS = 4;
-struct alignas(float) Detection{
+struct alignas(float) Detection {
     //x y w h
     float bbox[LOCATIONS];
     //float objectness;
@@ -104,7 +109,7 @@ struct alignas(float) Detection{
 };
 
 
-inline float* safeCudaHostAlloc(size_t memSize) {
+inline float *safeCudaHostAlloc(size_t memSize) {
     float *hostMem = nullptr;
     CUDA_CHECK(cudaHostAlloc(&hostMem, memSize, cudaHostAllocDefault));
     if (hostMem == nullptr) {

@@ -5,6 +5,7 @@
 
 ZyTrt::ZyTrt(int num_worker, const std::string &engineFile) {
     isWorker = true;
+    numWorker = num_worker;
     for (int i = 0; i < num_worker; ++i) {
         std::cout << i << " start" << std::endl;
         _bufferPool.enqueue(new TrtBuffer(engineFile));
@@ -15,6 +16,7 @@ ZyTrt::ZyTrt(int num_worker, const std::string &engineFile) {
 
 ZyTrt::ZyTrt(int num_worker, const std::string &engineFile, int profileIndex, nvinfer1::Dims maxDims) {
     isWorker = true;
+    numWorker = num_worker;
     for (int i = 0; i < num_worker; ++i) {
         std::cout << i << " start" << std::endl;
         _bufferPool.enqueue(new TrtBuffer(engineFile, profileIndex, maxDims));
@@ -23,17 +25,15 @@ ZyTrt::ZyTrt(int num_worker, const std::string &engineFile, int profileIndex, nv
 }
 
 
-ZyTrt::ZyTrt(const std::string &engineFile) {
-    trtBuffer = new TrtBuffer(engineFile);
+ZyTrt::~ZyTrt(){
+    for (int i = 0;i < numWorker;i++){
+        TrtBuffer *buffer = nullptr;
+        _bufferPool.wait_dequeue(buffer);
+        delete(buffer);
+    }
 }
 
-
-ZyTrt::ZyTrt(const std::string &engineFile, int profileIndex, nvinfer1::Dims maxDims) {
-    trtBuffer = new TrtBuffer(engineFile, profileIndex, maxDims);
-}
-
-
-void ZyTrt::DoDynamicInferenceAsync(
+std::function<void()> ZyTrt::DoDynamicInferenceAsync(
         const void *input, nvinfer1::Dims &inputDim,
         std::vector<float *> &outputList, std::vector <nvinfer1::Dims> &outputDimList
 ) {
@@ -41,12 +41,7 @@ void ZyTrt::DoDynamicInferenceAsync(
     size_t size = volume(inputDim);
 
     // 获取buffer
-    TrtBuffer *buffer;
-    if (isWorker) {
-        buffer = getTrtBuffer();
-    }else{
-        buffer = trtBuffer;
-    }
+    TrtBuffer *buffer = getTrtBuffer();
 
     // 数据复制到锁页内存
     std::memcpy(buffer->bindingHost[inputIndex], input, size * sizeof(float));
@@ -69,25 +64,17 @@ void ZyTrt::DoDynamicInferenceAsync(
         outputDimList.push_back(buffer->GetRuntimeBindingDims(bindIndex));
     }
 
-    // 释放buffer
-    if (isWorker) {
-        releaseTrtBuffer(buffer);
-    }
+    return std::bind(&ZyTrt::releaseTrtBuffer, this, buffer);
 }
 
-void ZyTrt::DoInferenceAsync(
+std::function<void()> ZyTrt::DoInferenceAsync(
         const void *input, int batch_size,
         std::vector<float *> &outputList, std::vector <nvinfer1::Dims> &outputDimList
 ) {
     size_t inputIndex = 0;
 
     // 获取buffer
-    TrtBuffer *buffer;
-    if (isWorker) {
-        buffer = getTrtBuffer();
-    }else{
-        buffer = trtBuffer;
-    }
+    TrtBuffer *buffer = getTrtBuffer();
 
     auto max_batch_size = buffer->bindingDims[inputIndex].d[0];
 
@@ -115,8 +102,5 @@ void ZyTrt::DoInferenceAsync(
         outputDimList.push_back(buffer->GetRuntimeBindingDims(bindIndex));
     }
 
-    // 释放buffer
-    if (isWorker) {
-        releaseTrtBuffer(buffer);
-    }
+    return std::bind(&ZyTrt::releaseTrtBuffer, this, buffer);
 }

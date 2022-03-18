@@ -4,6 +4,7 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include <functional>
 
 #include "utils.h"
 #include "TrtBuffer.h"
@@ -14,42 +15,46 @@ class ZyTrt {
 public:
     ZyTrt() {};
 
-    ~ZyTrt() {};
+    ~ZyTrt();
 
     ZyTrt(int num_worker, const std::string &engineFile);
 
     ZyTrt(int num_worker, const std::string &engineFile, int profileIndex, nvinfer1::Dims maxDims);
 
-    ZyTrt(const std::string &engineFile);
+    ZyTrt(int num_worker, const std::string &engineFile, int profileIndex, std::vector<nvinfer1::Dims> maxDimList);
 
-    ZyTrt(const std::string &engineFile, int profileIndex, nvinfer1::Dims maxDims);
+    std::function<void()> DoDynamicInferenceAsync(
+        const void *input, nvinfer1::Dims &inputDim,
+        std::vector<float *> &outputList, std::vector<nvinfer1::Dims> &outputDimList);
 
-    void DoDynamicInferenceAsync(
-            const void *input, nvinfer1::Dims &inputDim,
-            std::vector<float *> &outputList, std::vector <nvinfer1::Dims> &outputDimList
-    );
-
-    void DoInferenceAsync(
-            const void *input, int batch_size,
-            std::vector<float *> &outputList, std::vector <nvinfer1::Dims> &outputDimList
-    );
-
+    std::function<void()> DoInferenceAsync(
+        const void *input, int batch_size,
+        std::vector<float *> &outputList, std::vector<nvinfer1::Dims> &outputDimList);
 
 protected:
     // 构建队列
     TrtBuffer *getTrtBuffer() {
         TrtBuffer *buffer = nullptr;
-        _bufferPool.wait_dequeue(buffer);
+        if (isWorker) {
+            _bufferPool.wait_dequeue(buffer);
+        }
+        else {
+            buffer = trtBuffer;
+        }
         return buffer;
     }
 
     void releaseTrtBuffer(TrtBuffer *buffer) {
-        _bufferPool.enqueue(buffer);
+        if (isWorker) {
+            _bufferPool.enqueue(buffer);
+        }
     }
 
 private:
     moodycamel::BlockingConcurrentQueue<TrtBuffer *> _bufferPool;
     bool isWorker = false;
+    int numWorker = 0;
+
     // 构建推理buffer
     TrtBuffer *trtBuffer;
 };

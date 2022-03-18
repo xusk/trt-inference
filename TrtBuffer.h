@@ -1,21 +1,22 @@
 #ifndef __TRT_BUFFER_H__
 #define __TRT_BUFFER_H__
 
+#include "utils.h"
+#include "NvInfer.h"
+#include "NvInferPlugin.h"
+#include <cuda_runtime.h>
+#include "spdlog/spdlog.h"
+#include "Int8EntropyCalibrator.h"
+#include "concurrentqueue/blockingconcurrentqueue.h"
+
 #include <string>
 #include <vector>
 #include <iostream>
 #include <algorithm>
 
-#include <cuda_runtime.h>
-#include "NvInfer.h"
-#include "concurrentqueue/blockingconcurrentqueue.h"
-
-#include "utils.h"
-
-
 class TrtBuffer {
 public:
-    TrtBuffer(){};
+    TrtBuffer() {};
 
     ~TrtBuffer();
 
@@ -43,12 +44,15 @@ public:
     size_t GetRuntimeBindingSize(int bindIndex) const {
         return volume(GetRuntimeBindingDims(bindIndex));
     }
+
     nvinfer1::Dims GetRuntimeBindingDims(int bindIndex) const {
         return context->getBindingDimensions(bindIndex);
     }
+
     nvinfer1::DataType GetBindingDataType(int bindIndex) const {
         return bindingDataType[bindIndex];
     }
+
     void StreamSynchronize() const {
         cudaStreamSynchronize(stream);
     }
@@ -64,15 +68,14 @@ public:
     std::vector<int> outputBindIndex;    // 输出index
     std::vector<int> bindingSize;        // 输入输入最大大小
 
-    std::vector<nvinfer1::Dims> bindingDims;
-    std::vector<nvinfer1::DataType> bindingDataType;
+    std::vector <nvinfer1::Dims> bindingDims;
+    std::vector <nvinfer1::DataType> bindingDataType;
 
 private:
     TrtLogger mLogger;
-    nvinfer1::ICudaEngine  *_engine = nullptr;
+    nvinfer1::ICudaEngine *_engine = nullptr;
 
 };
-
 
 
 #endif  // !__TRT_BUFFER_H__

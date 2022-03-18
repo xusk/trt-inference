@@ -1,9 +1,9 @@
+#include "TrtBuffer.h"
+
 #include <iostream>
 #include <fstream>
 #include <string>
 
-#include "TrtBuffer.h"
-#include "spdlog/spdlog.h"
 
 bool TrtBuffer::DeserializeEngine(const std::string &engineFile) {
     std::ifstream in(engineFile.c_str(), std::ifstream::binary);
@@ -15,7 +15,7 @@ bool TrtBuffer::DeserializeEngine(const std::string &engineFile) {
         in.seekg(start_pos);
         std::unique_ptr<char[]> engineBuf(new char[bufCount]);
         in.read(engineBuf.get(), bufCount);
-
+        initLibNvInferPlugins(&mLogger, "");
         nvinfer1::IRuntime *runtime = nvinfer1::createInferRuntime(mLogger);
         _engine = runtime->deserializeCudaEngine((void *) engineBuf.get(), bufCount, nullptr);
         assert(_engine != nullptr);
@@ -40,7 +40,7 @@ void TrtBuffer::InitEngine(int profileIndex, nvinfer1::Dims maxDims) {
 
     spdlog::info("malloc device memory");
     int nbBindings = _engine->getNbBindings();
-    std::cout << "nbBingdings: " << nbBindings << std::endl;
+    //  std::cout << "nbBingdings: " << nbBindings << std::endl;
     bindingDevice.resize(nbBindings);
     bindingHost.resize(nbBindings);
     bindingSize.resize(nbBindings);
@@ -73,6 +73,7 @@ void TrtBuffer::InitEngine(int profileIndex, nvinfer1::Dims maxDims) {
     spdlog::info("engine init finish");
 }
 
+
 void TrtBuffer::InitEngine() {
     spdlog::info("init engine...");
 
@@ -84,7 +85,6 @@ void TrtBuffer::InitEngine() {
 
     spdlog::info("malloc device memory");
     int nbBindings = _engine->getNbBindings();
-    std::cout << "nbBingdings: " << nbBindings << std::endl;
     bindingDevice.resize(nbBindings);
     bindingHost.resize(nbBindings);
     bindingSize.resize(nbBindings);
@@ -127,6 +127,7 @@ TrtBuffer::TrtBuffer(const std::string &engineFile, int profileIndex, nvinfer1::
     InitEngine(profileIndex, maxDims);
 }
 
+
 TrtBuffer::~TrtBuffer() {
     if (context != nullptr) {
         context->destroy();
@@ -138,38 +139,40 @@ TrtBuffer::~TrtBuffer() {
     }
 
     for (auto bind: bindingDevice) {
-        safeCudaFree(&bind);
+        safeCudaFree(bind);
+    }
+
+    for (auto bind: bindingHost) {
+        safeCudaHostFree(bind);
     }
 }
-
 
 void TrtBuffer::DataTransferAsync(int size, int bindIndex, bool isHostToDevice) {
     auto host = bindingHost[bindIndex];
     if (isHostToDevice) {
-        assert(size * sizeof(float) <= bindingSize[bindIndex]);
+        assert(size * getElementSize(bindingDataType[bindIndex]) <= unsigned(bindingSize[bindIndex]));
         CUDA_CHECK(cudaMemcpyAsync(
-                bindingDevice[bindIndex], host, size * sizeof(float), cudaMemcpyHostToDevice, stream));
+                bindingDevice[bindIndex], host, size * getElementSize(bindingDataType[bindIndex]), cudaMemcpyHostToDevice, stream));
     } else {
         CUDA_CHECK(cudaMemcpyAsync(
-                host, bindingDevice[bindIndex], size * sizeof(float), cudaMemcpyDeviceToHost, stream));
+                host, bindingDevice[bindIndex], size * getElementSize(bindingDataType[bindIndex]), cudaMemcpyDeviceToHost, stream));
     }
 }
-
 
 void TrtBuffer::ForwardAsync(nvinfer1::Dims &dim) {
     context->setBindingDimensions(0, dim);
     context->enqueueV2(bindingDevice.data(), stream, nullptr);
 }
 
-void TrtBuffer::ForwardAsync() {
+
+void TrtBuffer::ForwardAsync() { 
     context->enqueueV2(bindingDevice.data(), stream, nullptr);
 }
 
-
 void TrtBuffer::GetOutput() {
-    for (int idx = 0; idx < outputBindIndex.size(); ++idx) {
+    for (unsigned int idx = 0; idx < outputBindIndex.size(); ++idx) {
         int bindIndex = outputBindIndex[idx];
-        auto hostOutput = bindingHost[bindIndex];
+        //auto hostOutput = bindingHost[bindIndex];
 
         // 数据 GPU -> host
         DataTransferAsync(GetRuntimeBindingSize(bindIndex), bindIndex, false);
